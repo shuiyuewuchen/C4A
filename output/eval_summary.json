@@ -1,0 +1,25 @@
+{
+  "generated_at": "2026-10-09T16:30:45.893302",
+  "folder": "/Users/a0532/Desktop/C4A挑战交付资料/samples",
+  "n_authors": 3,
+  "authors": [
+    {
+      "author": "wangfang",
+      "completeness_score": 0.9,
+      "quality_score": 1.0,
+      "composite_score": 0.96
+    },
+    {
+      "author": "liming",
+      "completeness_score": 0.5,
+      "quality_score": 0.625,
+      "composite_score": 0.575
+    },
+    {
+      "author": "zhangwei",
+      "completeness_score": 0.0,
+      "quality_score": 0.25,
+      "composite_score": 0.15
+    }
+  ]
+}
