@@ -60,7 +60,9 @@ python3 scripts/c4_evaluator.py /path/to/c4_submissions --out ./output
 ## 依赖
 
 - Python 3.9+（必需）
-- `pip install openpyxl`（可选，启用 Excel 输出；不装也能跑 Markdown，报告会显式提示）
+- `openpyxl`（生成 Excel 详表必需；v1.2 已安装并验证产出）
+  - 安装：`pip install openpyxl`
+  - 缺失行为：不中断，Markdown 报告正文给出「⚠️ 本次未生成 Excel 详表」提示，`eval_summary.json` 的 `excel_written=false`
 - 无网络、无 API key 也能跑
 
 ## 评分公式（v1.1）

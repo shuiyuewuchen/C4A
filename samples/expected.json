@@ -1,0 +1,29 @@
+{
+  "_comment": "15 个判定点的黄金标准答案（人工标注）。每个点 = 一位作者的一个必交件。expected_status 取值：✅/⚠️/❌。status 允许的容差：相邻档不算误判（✅↔⚠️、⚠️↔❌），跨档才算误判（✅↔❌）。",
+  "tolerance": "adjacent_ok",
+  "cases": [
+    {"author": "wangfang", "deliverable": "skill_doc",        "expected": "✅", "note": "完整 skill说明.md，含输入/输出/环境要求"},
+    {"author": "wangfang", "deliverable": "executable_content","expected": "✅", "note": "有 .skill 文件和可运行代码"},
+    {"author": "wangfang", "deliverable": "demo",             "expected": "⚠️", "note": "只有 demo说明.md 文字，没有真视频/截图"},
+    {"author": "wangfang", "deliverable": "teaching_doc",     "expected": "✅", "note": "完整教学说明，含上手步骤/常见坑表"},
+    {"author": "wangfang", "deliverable": "ai_log",           "expected": "✅", "note": "完整 AI 日志，含工具/prompt 迭代/失败经验"},
+
+    {"author": "liming",   "deliverable": "skill_doc",        "expected": "⚠️", "note": "有说明但只有 141 字，内容单薄"},
+    {"author": "liming",   "deliverable": "executable_content","expected": "⚠️", "note": "有 weekly-report.py 但只有 6 行 stub"},
+    {"author": "liming",   "deliverable": "demo",             "expected": "❌", "note": "完全没有 demo"},
+    {"author": "liming",   "deliverable": "teaching_doc",     "expected": "⚠️", "note": "只有一句'直接 python 跑'，敷衍"},
+    {"author": "liming",   "deliverable": "ai_log",           "expected": "❌", "note": "完全没有 AI 日志"},
+
+    {"author": "zhangwei", "deliverable": "skill_doc",        "expected": "❌", "note": "只有 3 行 notes，什么都没说"},
+    {"author": "zhangwei", "deliverable": "executable_content","expected": "❌", "note": "没有任何代码/skill"},
+    {"author": "zhangwei", "deliverable": "demo",             "expected": "❌", "note": "没有 demo"},
+    {"author": "zhangwei", "deliverable": "teaching_doc",     "expected": "❌", "note": "没有教学说明"},
+    {"author": "zhangwei", "deliverable": "ai_log",           "expected": "❌", "note": "没有 AI 日志"}
+  ],
+  "expected_rank_order": ["wangfang", "liming", "zhangwei"],
+  "expected_score_bands": {
+    "wangfang":  {"composite_min": 0.85, "composite_max": 1.0},
+    "liming":    {"composite_min": 0.35, "composite_max": 0.60},
+    "zhangwei":  {"composite_min": 0.0,  "composite_max": 0.25}
+  }
+}
