@@ -1,19 +1,20 @@
 {
-  "generated_at": "2026-10-09T16:30:45.893302",
+  "generated_at": "2026-10-09T18:09:24.224122",
   "folder": "/Users/a0532/Desktop/C4A挑战交付资料/samples",
   "n_authors": 3,
+  "excel_written": false,
   "authors": [
     {
       "author": "wangfang",
-      "completeness_score": 0.9,
+      "completeness_score": 0.93,
       "quality_score": 1.0,
-      "composite_score": 0.96
+      "composite_score": 0.97
     },
     {
       "author": "liming",
-      "completeness_score": 0.5,
-      "quality_score": 0.625,
-      "composite_score": 0.575
+      "completeness_score": 0.25,
+      "quality_score": 0.62,
+      "composite_score": 0.47
     },
     {
       "author": "zhangwei",

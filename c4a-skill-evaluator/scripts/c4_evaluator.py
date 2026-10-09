@@ -51,11 +51,13 @@ REQUIRED_DELIVERABLES: dict[str, dict[str, Any]] = {
         "preferred_ext": [".skill", ".py", ".md", ".zip", ".js", ".sh"],
     },
     "demo": {
-        "label_cn": "Demo（视频/截图）",
+        "label_cn": "Demo（视频/截图/演示）",
         "filename_patterns": ["demo", "演示", "截图", "screen", "录屏"],
-        "content_signals": [],
+        # 允许以 .md 说明文档形式交付（演示步骤、截图说明、运行结果描述）
+        "content_signals": ["截图", "录屏", "演示", "show", "result", "运行结果",
+                            "输出示例", "运行效果", "screenshot", "demo 效果"],
         "preferred_ext": [".mp4", ".mov", ".webm", ".png", ".jpg", ".jpeg", ".gif"],
-        "weak_ext": [".md", ".txt"],  # demo说明类文档算弱匹配
+        "weak_ext": [".md", ".txt"],  # demo说明类文档算弱匹配，但有内容信号可升 ✅
     },
     "teaching_doc": {
         "label_cn": "教学说明",
@@ -242,12 +244,39 @@ def _content_match(signals: list[str], text: str) -> bool:
     return any(s.lower() in low for s in signals)
 
 
+def _content_adequacy(f: FileInfo) -> tuple[float, str]:
+    """
+    判断一个已匹配文件的"内容充实度"，返回 (权重, 备注)。
+    - 文本文件：按正文字符数
+    - 媒体文件：按文件大小
+    这一步防止"交了 5 个空文件"和"交了 5 个完整文件"拿一样分。
+    """
+    if f.ext in {".mp4", ".mov", ".webm", ".png", ".jpg", ".jpeg", ".gif"}:
+        # 媒体：<50KB 视为占位图/无效录屏
+        if f.size < 50_000:
+            return 0.5, "媒体文件过小，疑似占位"
+        return 1.0, ""
+    if f.ext in {".skill", ".py", ".js", ".sh"}:
+        # 代码/skill：<500 字符视为 stub
+        if len(f.content_text) < 500:
+            return 0.5, "代码内容过短，疑似 stub"
+        return 1.0, ""
+    # 文本类（.md/.txt）：<150 字符视为敷衍
+    n = len(f.content_text.strip())
+    if n < 150:
+        return 0.5, f"正文仅 {n} 字，内容单薄"
+    if n < 500:
+        return 0.8, f"正文 {n} 字，基本可用"
+    return 1.0, ""
+
+
 def check_completeness(sub: AuthorSubmission) -> None:
-    """对每个必须文件，找到最佳匹配文件，标记 ✅/⚠️/❌。"""
+    """对每个必须文件，找到最佳匹配文件，标记 ✅/⚠️/❌，并按内容充实度加权。"""
     result: dict[str, dict[str, Any]] = {}
+    weighted_sum = 0.0
     for key, spec in REQUIRED_DELIVERABLES.items():
-        best_strong = None   # 文件名命中 + 扩展名首选 + 内容命中
-        best_weak = None     # 文件名命中但扩展名弱
+        best_strong = None   # (file, match_type, base_weight)
+        best_weak = None
         for f in sub.files:
             fname = f.path.name
             fn_hit = _filename_match(spec["filename_patterns"], fname)
@@ -256,37 +285,55 @@ def check_completeness(sub: AuthorSubmission) -> None:
             ext_weak = f.ext in spec.get("weak_ext", [])
             if fn_hit and ext_pref:
                 if ct_hit or not spec["content_signals"]:
-                    best_strong = (f, "filename+content")
+                    best_strong = (f, "filename+content", 1.0)
                     break
                 elif best_weak is None:
-                    best_weak = (f, "filename-only")
-            elif fn_hit and ext_weak and best_weak is None:
-                best_weak = (f, "weak-ext")
+                    best_weak = (f, "filename-only", 0.5)
+            elif fn_hit and ext_weak:
+                # 弱扩展名，但如果内容信号命中，也可以升为 strong
+                if ct_hit:
+                    if best_strong is None:
+                        best_strong = (f, "weak-ext-but-content", 0.8)
+                elif best_weak is None:
+                    best_weak = (f, "weak-ext", 0.3)
             elif ct_hit and ext_pref and best_strong is None:
-                best_strong = (f, "content-only")
+                best_strong = (f, "content-only", 0.6)
 
         if best_strong is not None:
-            f, mtype = best_strong
-            status = "✅" if mtype != "content-only" else "⚠️"
-            matched = f.rel_path if mtype != "content-only" else f"{f.rel_path}（仅内容命中）"
+            f, mtype, base = best_strong
+            adequacy, note = _content_adequacy(f)
+            weight = base * adequacy
+            # 决定展示状态
+            if weight >= 0.9:
+                status = "✅"
+            elif weight >= 0.5:
+                status = "⚠️"
+            else:
+                status = "❌"
+            matched = f.rel_path
+            if note:
+                matched += f"（{note}）"
         elif best_weak is not None:
-            f, mtype = best_weak
+            f, mtype, base = best_weak
+            adequacy, _ = _content_adequacy(f)
+            weight = base * adequacy
             status = "⚠️"
             matched = f"{f.rel_path}（弱匹配：{mtype}）"
         else:
             status = "❌"
             matched = "—"
             mtype = "none"
+            weight = 0.0
         result[key] = {
             "label": spec["label_cn"],
             "status": status,
             "matched": matched,
             "match_type": mtype,
+            "weight": round(weight, 2),
         }
+        weighted_sum += weight
     sub.completeness = result
-    present = sum(1 for v in result.values() if v["status"] == "✅")
-    partial = sum(1 for v in result.values() if v["status"] == "⚠️")
-    sub.completeness_score = (present + 0.5 * partial) / 5.0
+    sub.completeness_score = round(weighted_sum / 5.0, 3)
 
 
 # ---------------------------------------------------------------------------
@@ -387,8 +434,8 @@ def evaluate_quality(sub: AuthorSubmission) -> None:
 
     sub.quality = result
     sub.quality_score = total / 4.0
-    # 综合分：完整性 0.4 + 质量 0.6
-    sub.composite_score = round(sub.completeness_score * 0.4 + sub.quality_score * 0.6, 3)
+    # 综合分：完整性 0.4 + 质量 0.6（两者均为 0-1）
+    sub.composite_score = round(sub.completeness_score * 0.4 + sub.quality_score * 0.6, 2)
 
 
 # ---------------------------------------------------------------------------
@@ -423,11 +470,14 @@ def _quality_hint(key: str) -> str:
 # 6. 报告生成
 # ---------------------------------------------------------------------------
 
-def render_markdown_report(subs: list[AuthorSubmission], root: Path) -> str:
+def render_markdown_report(subs: list[AuthorSubmission], root: Path,
+                           excel_written: bool = True) -> str:
     now = _dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     n = len(subs)
-    n_complete = sum(1 for s in subs if s.completeness_score >= 0.99)
-    n_partial = sum(1 for s in subs if 0.4 <= s.completeness_score < 0.99)
+    # 完整率按加权分：>=0.85 视为完整，0.4-0.85 部分，<0.4 严重缺失
+    n_complete = sum(1 for s in subs if s.completeness_score >= 0.85)
+    n_partial = sum(1 for s in subs if 0.4 <= s.completeness_score < 0.85)
+    n_insufficient = n - n_complete - n_partial
     avg_q = sum(s.quality_score for s in subs) / n if n else 0
     avg_c = sum(s.composite_score for s in subs) / n if n else 0
 
@@ -437,19 +487,23 @@ def render_markdown_report(subs: list[AuthorSubmission], root: Path) -> str:
     lines.append(f"- 生成时间：{now}")
     lines.append(f"- 扫描路径：`{root}`")
     lines.append(f"- 识别提交：**{n}** 位作者，共 **{sum(len(s.files) for s in subs)}** 个文件")
-    lines.append(f"- 评审引擎：c4_evaluator.py v1.0（规则引擎）")
+    lines.append(f"- 评审引擎：c4_evaluator.py v1.1（规则引擎 + 内容充实度加权）")
     lines.append("")
     lines.append("## 一、班级总览")
     lines.append("")
     lines.append("| 指标 | 数值 |")
     lines.append("|------|------|")
     lines.append(f"| 总提交人数 | {n} |")
-    lines.append(f"| 完整提交（5/5） | {n_complete} |")
-    lines.append(f"| 部分提交（3-4/5） | {n_partial} |")
-    lines.append(f"| 严重缺失（<3/5） | {n - n_complete - n_partial} |")
+    lines.append(f"| 完整提交（完整率 ≥ 0.85） | {n_complete} |")
+    lines.append(f"| 部分提交（0.4–0.85） | {n_partial} |")
+    lines.append(f"| 严重缺失（<0.4） | {n_insufficient} |")
     lines.append(f"| 平均质量分 | {avg_q:.2f} / 1.00 |")
     lines.append(f"| 平均综合分 | {avg_c:.2f} / 1.00 |")
     lines.append("")
+    if not excel_written:
+        lines.append("> ⚠️ **注意**：本次未生成 Excel 详表（`openpyxl` 未安装）。"
+                     "运行 `pip3 install openpyxl` 后重跑即可生成。")
+        lines.append("")
 
     # 最常见缺失
     missing_count: dict[str, int] = {}
@@ -473,11 +527,11 @@ def render_markdown_report(subs: list[AuthorSubmission], root: Path) -> str:
     # 排名
     lines.append("## 二、综合排名")
     lines.append("")
-    lines.append("| 排名 | 作者 | 完整性 | 质量分 | 综合分 |")
+    lines.append("| 排名 | 作者 | 完整率 | 质量分 | 综合分 |")
     lines.append("|------|------|--------|--------|--------|")
     ranked = sorted(subs, key=lambda s: -s.composite_score)
     for i, s in enumerate(ranked, 1):
-        lines.append(f"| {i} | {s.author} | {s.completeness_score*5:.1f}/5 | {s.quality_score:.2f} | **{s.composite_score:.2f}** |")
+        lines.append(f"| {i} | {s.author} | {s.completeness_score:.2f} | {s.quality_score:.2f} | **{s.composite_score:.2f}** |")
     lines.append("")
 
     # 作者详情
@@ -512,32 +566,33 @@ def render_markdown_report(subs: list[AuthorSubmission], root: Path) -> str:
     return "\n".join(lines)
 
 
-def write_excel(subs: list[AuthorSubmission], out_path: Path) -> None:
+def write_excel(subs: list[AuthorSubmission], out_path: Path) -> bool:
+    """写 Excel，返回是否成功写入。失败（缺依赖）时返回 False。"""
     try:
         from openpyxl import Workbook
     except ImportError:
         print("[warn] openpyxl 未安装，跳过 Excel 输出。pip install openpyxl 即可启用。", file=sys.stderr)
-        return
+        return False
     wb = Workbook()
     ws = wb.active
     ws.title = "总览"
-    ws.append(["作者", "完整文件数", "完整率", "可复用", "可执行", "可验证", "IO明确",
-               "均分", "综合分", "缺失项"])
+    ws.append(["作者", "完整率", "可复用", "可执行", "可验证", "IO明确",
+               "质量均分", "综合分", "缺失项"])
     for s in sorted(subs, key=lambda x: -x.composite_score):
         missing = [v["label"] for v in s.completeness.values() if v["status"] == "❌"]
         ws.append([
             s.author,
-            int(round(s.completeness_score * 5)),
             round(s.completeness_score, 2),
             s.quality.get("reusable", {}).get("rating", ""),
             s.quality.get("executable", {}).get("rating", ""),
             s.quality.get("verifiable", {}).get("rating", ""),
             s.quality.get("clear_io", {}).get("rating", ""),
             round(s.quality_score, 2),
-            s.composite_score,
+            round(s.composite_score, 2),
             "、".join(missing),
         ])
     wb.save(out_path)
+    return True
 
 
 # ---------------------------------------------------------------------------
@@ -561,23 +616,25 @@ def run(folder: Path, out_dir: Path) -> dict[str, Any]:
         subs.append(sub)
 
     out_dir.mkdir(parents=True, exist_ok=True)
-    md = render_markdown_report(subs, folder)
-    md_path = out_dir / "评审报告.md"
-    md_path.write_text(md, encoding="utf-8")
 
     xlsx_path = out_dir / "评审详表.xlsx"
-    write_excel(subs, xlsx_path)
+    excel_written = write_excel(subs, xlsx_path)
+
+    md = render_markdown_report(subs, folder, excel_written=excel_written)
+    md_path = out_dir / "评审报告.md"
+    md_path.write_text(md, encoding="utf-8")
 
     summary = {
         "generated_at": _dt.datetime.now().isoformat(),
         "folder": str(folder),
         "n_authors": len(subs),
+        "excel_written": excel_written,
         "authors": [
             {
                 "author": s.author,
-                "completeness_score": s.completeness_score,
-                "quality_score": s.quality_score,
-                "composite_score": s.composite_score,
+                "completeness_score": round(s.completeness_score, 2),
+                "quality_score": round(s.quality_score, 2),
+                "composite_score": round(s.composite_score, 2),
             }
             for s in sorted(subs, key=lambda x: -x.composite_score)
         ],
