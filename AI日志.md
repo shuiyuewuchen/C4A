@@ -41,7 +41,7 @@
 ### Round 6：跑真实评审
 - Prompt："用脚本跑 samples，看输出对不对。"
 - 产出：output/评审报告.md + xlsx + json。
-- 验证：排名 wangfang(0.96) > liming(0.57) > zhangwei(0.15)，符合预期。
+- 验证：排名 wangfang(0.97) > liming(0.47) > zhangwei(0.15)，符合预期。
 
 ### Round 7：写文档
 - Prompt："写方案设计、教学说明、AI日志、拿来说明。"
