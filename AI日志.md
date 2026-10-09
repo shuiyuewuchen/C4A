@@ -10,9 +10,9 @@
 ## 任务拆解过程（多轮对话，非一句话生成）
 
 ### Round 1：理解挑战
-- Prompt："读一下 CHALLENGE.md，告诉我这个挑战要交什么、评分标准是什么。"
+- Prompt："读一下挑战的原始指引，告诉我这个挑战要交什么、评分标准是什么。"
 - 产出：列出 6 个必须交付物、5 个评分维度、4 个 Level。
-- 反思：第一次只看了 CHALLENGE.md，没看 rubric.json 和 starter zip。豆包主动提示我"还要看评分细则和 starter"，于是继续读 rubric.json 和解压 starter。
+- 反思：第一次只看了挑战原文，没看 rubric.json 和 starter zip。豆包主动提示我"还要看评分细则和 starter"，于是继续读 rubric.json 和解压 starter。
 
 ### Round 2：拆解 starter
 - Prompt："读一下 starter 里的 SKILL.md 和 c4_rubric.yaml，总结它已经给了什么、还缺什么。"

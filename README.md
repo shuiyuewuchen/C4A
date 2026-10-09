@@ -6,7 +6,7 @@
 
 ## 挑战要求 → 本包文件对照
 
-| 挑战要求（按 CHALLENGE.md） | 本包文件 | 说明 |
+| 挑战要求（据课程挑战原始指引） | 本包文件 | 说明 |
 |---|---|---|
 | 方案设计文档 | `方案设计.md` | 架构、评审维度、技术选型理由 |
 | 可安装技能包 | `c4-skill-evaluator.skill` + `c4a-skill-evaluator/` | SKILL.md + 脚本 + rubric |
@@ -15,7 +15,7 @@
 | AI 日志 | `AI日志.md` | 12 轮对话 + prompt 迭代表 |
 | 拿来说明 | `拿来说明.md` | 从 starter 拿了什么、改了什么、为什么 |
 | （额外）AAR 复盘 | `AAR复盘.md` | 目标 vs 实际、犯错记录、改进 |
-| （额外）误判率验证 | `samples/expected.json` + `scripts/validate.py` + `output/误判率验证.txt` | 15 个判定点 0 误判 |
+| （额外）误判率验证 | `samples/expected.json` + `c4a-skill-evaluator/scripts/validate.py` + `output/误判率验证.txt` | 15 个判定点 0 误判 |
 
 > 注：提交到群里前，建议把这些文件重命名为 `姓名拼音_C4A_描述.扩展名` 格式。
 
